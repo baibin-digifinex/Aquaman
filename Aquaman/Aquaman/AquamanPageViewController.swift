@@ -116,7 +116,7 @@ open class AquamanPageViewController: UIViewController, AMPageControllerDataSour
         return scrollView
     }()
     
-    lazy private var contentScrollView: UIScrollView = {
+    lazy public private(set) var contentScrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.delegate = self
         scrollView.bounces = false
@@ -621,7 +621,7 @@ extension AquamanPageViewController {
             scrollView.contentOffset = .zero
         }
         let offsetY = scrollView.contentOffset.y
-        if offsetY <= 0 {
+        if offsetY <= 0, headerViewHeight > 0 {
             scrollView.contentOffset = .zero
             scrollView.am_isCanScroll = false
             mainScrollView.am_isCanScroll = true
