@@ -245,8 +245,11 @@ open class AquamanPageViewController: UIViewController, AMPageControllerDataSour
             }
             debugPrint(change)
             if change.newValue?.height != change.oldValue?.height {
-                self.updateOriginContent()
-                self.sillValue = self.headerViewHeight - self.menuViewPinHeight
+//                UIView.animate(withDuration: 0.25, animations: {
+                    self.reloadData()
+//                })
+//                self.updateOriginContent()
+//                self.sillValue = self.headerViewHeight - self.menuViewPinHeight
             }
         }
     }
@@ -316,10 +319,12 @@ open class AquamanPageViewController: UIViewController, AMPageControllerDataSour
     }
     
     private func updateOriginContent() {
-        mainScrollView.headerViewHeight = headerViewHeight
-        mainScrollView.menuViewHeight = menuViewHeight
-        //        headerViewConstraint?.constant = headerViewHeight
-        contentScrollViewConstraint?.constant = -menuViewHeight - menuViewPinHeight
+        UIView.animate(withDuration: 0.25) {
+            self.mainScrollView.headerViewHeight = self.headerViewHeight
+            self.mainScrollView.menuViewHeight = self.menuViewHeight
+            //        headerViewConstraint?.constant = headerViewHeight
+            self.contentScrollViewConstraint?.constant = -self.menuViewHeight - self.menuViewPinHeight
+        }
     }
     
     private func clear() {
