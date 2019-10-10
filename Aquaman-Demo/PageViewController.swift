@@ -29,55 +29,53 @@ import Aquaman
 
 class PageViewController: AquamanPageViewController {
 
-    let navBar = UIView()
-    let menuView = AquamanMenuView(parts:
-        .normalTextColor(UIColor.gray),
-        .selectedTextColor(UIColor.blue),
-        .textFont(UIFont.systemFont(ofSize: 15.0)),
-        .progressColor(UIColor.blue),
-        .progressHeight(2)
-    )
-    var count = 3
-    var headerViewHeight: CGFloat = 200.0
-    var menuViewHeight: CGFloat = 44.0
+    var indexPath = IndexPath(row: 0, section: 0)
+    private lazy var menuView: MenuView = {
+        let view = MenuView(parts:
+            .normalTextColor(UIColor.gray),
+            .selectedTextColor(UIColor.blue),
+            .textFont(UIFont.systemFont(ofSize: 15.0)),
+            .progressColor(UIColor.blue),
+            .progressHeight(2)
+        )
+        view.delegate = self
+        return view
+    }()
+    private let headerView = HeaderView()
+    private lazy var count = indexPath.row == 0 ? 3 : 0
+    private var headerViewHeight: CGFloat = 200.0
+    private var menuViewHeight: CGFloat = 54.0
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        view.backgroundColor = .white
-        
-        if #available(iOS 11.0, *) {
-            mainScrollView.contentInsetAdjustmentBehavior = .never
-        } else {
-            automaticallyAdjustsScrollViewInsets = false
+
+        mainScrollView.mj_header = MJRefreshNormalHeader(refreshingTarget: self, refreshingAction: #selector(updateData))
+        switch indexPath.row {
+        case 0:
+            menuView.titles = ["Superman", "Batman", "Wonder Woman"]
+            if #available(iOS 11.0, *) {
+                mainScrollView.contentInsetAdjustmentBehavior = .never
+            } else {
+                automaticallyAdjustsScrollViewInsets = false
+            }
+        case 1:
+            headerView.isHidden = true
+            menuView.isHidden = true
+            mainScrollView.mj_header.beginRefreshing()
+        default:
+            break
         }
-        navigationController?.interactivePopGestureRecognizer?.delegate = nil
-        
-        navBar.alpha = 0.0
-        navBar.backgroundColor = .white
-        view.addSubview(navBar)
-        navBar.snp.makeConstraints { (make) in
-            make.leading.equalToSuperview()
-            make.top.equalToSuperview()
-            make.trailing.equalToSuperview()
-            make.height.equalTo(UIApplication.shared.statusBarFrame.height + 44.0)
-        }
-        
-        menuView.titles = ["Superman", "Batman", "Wonder Woman"]
-        
-        let header = MJRefreshNormalHeader(refreshingTarget: self, refreshingAction: #selector(updateData))
-        mainScrollView.mj_header = header
-        menuView.delegate = self
     }
     
     @objc func updateData() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.menuView.titles = ["Superman", "Batman", "Wonder Woman", "The Flash", "Aquaman"]
+            self.headerView.isHidden = false
+            self.menuView.isHidden = false
+            self.menuView.titles = ["Superman", "Batman", "Wonder Woman", "The Flash"]
             self.count = self.menuView.titles.count
             self.headerViewHeight = 120.0
-            self.menuViewHeight = 50.0
+            self.menuViewHeight = 54.0
             self.reloadData()
-            self.setSelect(index: 2, animation: false)
             if self.mainScrollView.mj_header.isRefreshing {
                 self.mainScrollView.mj_header.endRefreshing()
             }
@@ -86,12 +84,16 @@ class PageViewController: AquamanPageViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(true, animated: animated)
+        switch indexPath.row {
+        case 0:
+            navigationController?.setNavigationBarHidden(true, animated: animated)
+        default:
+            break
+        }
     }
-
     
     override func headerViewFor(_ pageController: AquamanPageViewController) -> UIView {
-        return HeaderView()
+        return headerView
     }
     
     override func headerViewHeightFor(_ pageController: AquamanPageViewController) -> CGFloat {
@@ -110,16 +112,26 @@ class PageViewController: AquamanPageViewController {
         } else if index == 1 {
             let viewController = storyboard.instantiateViewController(withIdentifier: "BatmanViewController") as! BatmanViewController
             return viewController
-        } else {
+        } else if index == 2 {
             let viewController = storyboard.instantiateViewController(withIdentifier: "WonderWomanViewController") as! WonderWomanViewController
+            return viewController
+        } else {
+            let viewController = storyboard.instantiateViewController(withIdentifier: "TheFlashViewController") as! TheFlashViewController
             return viewController
         }
     }
     
-    
-//    override func originIndexFor(_ pageController: AquamanPageViewController) -> Int {
-//        return 2
-//    }
+    // 默认显示的 ViewController 的 index
+    override func originIndexFor(_ pageController: AquamanPageViewController) -> Int {
+        switch indexPath.row {
+        case 0:
+            return 0
+        case 1:
+            return 1
+        default:
+            return 0
+        }
+    }
     
     override func menuViewFor(_ pageController: AquamanPageViewController) -> UIView {
         return menuView
@@ -135,8 +147,7 @@ class PageViewController: AquamanPageViewController {
 
     
     override func pageController(_ pageController: AquamanPageViewController, mainScrollViewDidScroll scrollView: UIScrollView) {
-        let rate = (UIApplication.shared.statusBarFrame.height * 3.0)
-        navBar.alpha = min(scrollView.contentOffset.y / rate, 1.0)
+        
     }
     
     override func pageController(_ pageController: AquamanPageViewController, contentScrollViewDidScroll scrollView: UIScrollView) {
@@ -145,7 +156,7 @@ class PageViewController: AquamanPageViewController {
     
     override func pageController(_ pageController: AquamanPageViewController,
                                  contentScrollViewDidEndScroll scrollView: UIScrollView) {
-        menuView.checkState()
+        menuView.checkState(animation: true)
     }
     
     override func pageController(_ pageController: AquamanPageViewController, menuView isAdsorption: Bool) {
@@ -161,11 +172,18 @@ class PageViewController: AquamanPageViewController {
 }
 
 
-extension PageViewController: AquamanMenuViewDelegate {
-    func aquamanMenuView(_ menuView: AquamanMenuView, didSelectedItemAt index: Int) {
+extension PageViewController: MenuViewDelegate {
+    func menuView(_ menuView: MenuView, didSelectedItemAt index: Int) {
         guard index < count else {
             return
         }
-        setSelect(index: index, animation: true)
+        switch indexPath.row {
+        case 0:
+            setSelect(index: index, animation: true)
+        case 1:
+            setSelect(index: index, animation: false)
+        default:
+            break
+        }
     }
 }

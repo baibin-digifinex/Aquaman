@@ -1,5 +1,5 @@
 //
-//  AquamanMenuView.swift
+//  MenuView.swift
 //  Aquaman-Demo
 //
 //  Created by bawn on 2018/12/10.
@@ -26,7 +26,7 @@
 import UIKit
 import SnapKit
 
-enum AMMenuStyle {
+enum MenuStyle {
     case textFont(UIFont)
     case normalTextColor(UIColor)
     case selectedTextColor(UIColor)
@@ -34,16 +34,17 @@ enum AMMenuStyle {
     case progressHeight(CGFloat)
 }
 
-protocol AquamanMenuViewDelegate: class {
-    func aquamanMenuView(_ menuView: AquamanMenuView, didSelectedItemAt index: Int)
+protocol MenuViewDelegate: class {
+    func menuView(_ menuView: MenuView, didSelectedItemAt index: Int)
 }
 
-class AquamanMenuView: UIView {
+class MenuView: UIView {
     private let stackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
         stackView.alignment = .center
         stackView.distribution = .equalSpacing
+        stackView.spacing = 30.0
         return stackView
     }()
     lazy private var scrollView: UIScrollView = {
@@ -55,8 +56,8 @@ class AquamanMenuView: UIView {
         return scrollView
     }()
     private let progressView = UIView()
-    private var menuItemViews = [AquamanMenuItemView]()
-    weak var delegate: AquamanMenuViewDelegate?
+    private var menuItemViews = [MenuItemView]()
+    weak var delegate: MenuViewDelegate?
     
     var textFont = UIFont.systemFont(ofSize: 15.0)
     var normalTextColor = UIColor.darkGray
@@ -64,7 +65,7 @@ class AquamanMenuView: UIView {
     var progressColor = UIColor.red
     var progressHeight: CGFloat = 2.0
     
-    init(parts: AMMenuStyle...) {
+    init(parts: MenuStyle...) {
         super.init(frame: .zero)
         for part in parts {
             switch part {
@@ -99,7 +100,7 @@ class AquamanMenuView: UIView {
                 return
             }
             titles.forEach { (item) in
-                let label = AquamanMenuItemView(textFont, normalTextColor, selectedTextColor)
+                let label = MenuItemView(textFont, normalTextColor, selectedTextColor)
                 label.text = item
                 label.isUserInteractionEnabled = true
                 let tap = UITapGestureRecognizer(target: self, action: #selector(titleTapAction(_:)))
@@ -120,7 +121,7 @@ class AquamanMenuView: UIView {
                 make.width.equalTo(labelWidth)
                 make.centerX.equalTo(scrollView.snp.leading).offset(offset)
             }
-            checkState()
+            checkState(animation: false)
         }
     }
     
@@ -166,8 +167,8 @@ class AquamanMenuView: UIView {
             currentLabel = menuItemViews[currentIndex]
         }
     }
-    private var currentLabel: AquamanMenuItemView?
-    private var nextLabel: AquamanMenuItemView?
+    private var currentLabel: MenuItemView?
+    private var nextLabel: MenuItemView?
     
     
     override init(frame: CGRect) {
@@ -180,6 +181,7 @@ class AquamanMenuView: UIView {
     }
     
     private func initialize() {
+        backgroundColor = .white
         addSubview(scrollView)
         scrollView.snp.makeConstraints { (make) in
             make.leading.equalToSuperview().offset(24.0)
@@ -188,7 +190,7 @@ class AquamanMenuView: UIView {
             make.bottom.equalToSuperview()
         }
         
-        stackView.spacing = 30.0
+        
         scrollView.addSubview(stackView)
         stackView.snp.makeConstraints { (make) in
             make.edges.equalToSuperview()
@@ -204,6 +206,16 @@ class AquamanMenuView: UIView {
             make.centerX.equalTo(scrollView.snp.leading).offset(0)
             make.bottom.equalToSuperview()
         }
+        
+        layer.shadowRadius = 4
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOffset = CGSize(width: 0, height: 4)
+        layer.shadowOpacity = 0.05
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layer.shadowPath = UIBezierPath(rect: bounds).cgPath
     }
     
     func clear() {
@@ -216,18 +228,22 @@ class AquamanMenuView: UIView {
             , let index = stackView.arrangedSubviews.firstIndex(of: targetView) else {
             return
         }
-        delegate?.aquamanMenuView(self, didSelectedItemAt: index)
+        delegate?.menuView(self, didSelectedItemAt: index)
     }
     
     
     func updateLayout(_ externalScrollView: UIScrollView) {
-        guard currentIndex >= 0
-            , currentIndex < titles.count else {
-                return
+        guard currentIndex >= 0, currentIndex < titles.count else {
+            return
         }
         let scrollViewWidth = externalScrollView.bounds.width
         let offsetX = externalScrollView.contentOffset.x
-        currentIndex = Int(offsetX / scrollViewWidth)
+        let index = Int(offsetX / scrollViewWidth)
+        guard index >= 0, index < titles.count else {
+            return
+        }
+        
+        currentIndex = index
         scrollRate = (offsetX - CGFloat(currentIndex) * scrollViewWidth) / scrollViewWidth
         
         let currentWidth = stackView.arrangedSubviews[currentIndex].bounds.width
@@ -239,7 +255,7 @@ class AquamanMenuView: UIView {
         }
     }
     
-    func checkState() {
+    func checkState(animation: Bool) {
         guard currentIndex >= 0
             , currentIndex < titles.count
             , let currentLabel = currentLabel else {
@@ -247,7 +263,7 @@ class AquamanMenuView: UIView {
         }
         menuItemViews.forEach({$0.textColor = normalTextColor})
         menuItemViews[currentIndex].textColor = selectedTextColor
-        scrollView.scrollToSuitable(currentLabel)
+        scrollView.scrollToSuitablePosition(currentLabel, animation)
     }
 }
 
